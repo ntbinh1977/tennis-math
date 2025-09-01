@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tennis Serve Angle Helper</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- React + Babel (CDN) -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --card: #121a33;
+        --muted: #9fb0d1;
+        --accent: #6aa3ff;
+        --accent-2: #ffd166;
+        --ok: #5ad27d;
+        --line: #233055;
+        --ink: #e9eefc;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0; padding: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        color: var(--ink); background: radial-gradient(80% 80% at 50% 20%, #111a37 0%, #0a0f20 60%, #060913 100%);
+      }
+      .wrap { max-width: 1100px; margin: 32px auto; padding: 0 18px; }
+      header {
+        display: flex; align-items: center; gap: 16px; margin-bottom: 18px;
+      }
+      header .dot {
+        width: 14px; height: 14px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), #7ab6ff);
+        box-shadow: 0 0 16px #6aa3ff80;
+      }
+      header h1 { font-size: 1.35rem; margin: 0; letter-spacing: 0.2px; }
+      .grid { display: grid; grid-template-columns: 360px 1fr; gap: 18px; }
+      @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+      .card {
+        background: linear-gradient(180deg, #111935, #0f1731);
+        border: 1px solid #1b2545; border-radius: 14px; padding: 16px;
+        box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.03);
+      }
+      .card h2 { font-size: 1.0rem; margin: 0 0 12px; color: #dce6ff; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+      label { display: block; font-size: .86rem; color: var(--muted); margin-bottom: 6px; }
+      input[type="number"], select {
+        width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #27345b;
+        background: #0c1430; color: var(--ink); outline: none; font-size: .95rem;
+      }
+      .radio {
+        display: flex; gap: 10px; align-items: center; margin-top: 6px;
+      }
+      .radio label { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
+      .hint { font-size: .8rem; color: var(--muted); margin-top: 6px; }
+      .out {
+        display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin: 10px 0 4px;
+      }
+      .pill {
+        background: #0e1734; border: 1px solid #223059; border-radius: 12px; padding: 10px 12px;
+      }
+      .pill b { color: #eaf1ff; }
+      .strong { color: var(--ok); font-weight: 600; }
+      .canvasWrap { display: grid; grid-template-columns: 1fr; gap: 12px; }
+      .svgCard { background: #0c1430; border: 1px solid #1c274a; border-radius: 12px; padding: 10px; }
+      .svgTitle { font-size: .92rem; color: #dce6ff; margin: 0 0 8px; }
+      .footnote { color: var(--muted); font-size: .78rem; margin-top: 6px; }
+      .tag { display:inline-block; font-size: .75rem; padding: 4px 8px; border-radius: 999px; background:#0f1a3a; border:1px solid #26325a; color:#cfe0ff; }
+      .divider { height: 1px; background: linear-gradient(90deg, #0000, #233055, #0000); margin: 12px 0; }
+      .btn { display:inline-block; padding: 10px 14px; border-radius: 10px; border:1px solid #264178; background:#112356; color:#e9f2ff; cursor:pointer; }
+      .btn:hover { filter: brightness(1.08); }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useMemo, useState } = React;
+
+      // ---------- Utilities ----------
+      const g = 9.81;
+      const mphToMs = mph => mph * 0.44704;
+      const deg = r => (r * 180 / Math.PI);
+      const rad = d => (d * Math.PI / 180);
+
+      // Court constants (singles)
+      const BASELINE_TO_NET = 11.89;    // m
+      const NET_H = 0.914;              // m (center)
+      const SERVICE_DEPTH = 6.40;       // m (net to service line)
+      const HALF_SERVICE_W = 4.115;     // m (centerline to singles sideline)
+      const DEFAULT_STEP_IN = 0.5;      // m (contact inside baseline)
+      const MARGIN = 0.15;              // desired net clearance m
+
+      function zAtX({ v, theta, h0, x }) {
+        return h0 + x*Math.tan(theta) - (g*x*x)/(2*v*v*Math.pow(Math.cos(theta), 2));
+      }
+
+      function landingX({ v, theta, h0 }) {
+        // Find x where z(x) crosses 0 (ground). Bisection.
+        let lo = 0, hi = 50;
+        for (let i=0;i<120;i++) {
+          const mid = 0.5*(lo+hi);
+          (zAtX({ v, theta, h0, x: mid }) > 0) ? lo = mid : hi = mid;
+        }
+        return 0.5*(lo+hi);
+      }
+
+      // Find theta such that landing occurs a specific distance after the net
+      function thetaForTarget({ v, h0, xNet, dAfterNet }) {
+        // We need f(theta) = landingX(theta) - (xNet + dAfterNet) = 0
+        let a = rad(-20), b = rad(35);
+        // Grow bracket if same sign
+        const f = t => landingX({ v, theta:t, h0 }) - (xNet + dAfterNet);
+        let fa = f(a), fb = f(b);
+        let tries = 0;
+        while (fa*fb > 0 && tries++ < 40) {
+          a -= rad(5); b += rad(5);
+          fa = f(a); fb = f(b);
+        }
+        // If still not bracketed, fall back: just clear the net by MARGIN
+        if (fa*fb > 0) return thetaForNetClear({ v, h0, xNet, margin: MARGIN });
+        // Bisection
+        for (let i=0; i<90; i++) {
+          const m = 0.5*(a+b), fm = f(m);
+          if (fa*fm <= 0) { b = m; fb = fm; } else { a = m; fa = fm; }
+        }
+        return 0.5*(a+b);
+      }
+
+      // Solve for theta that achieves a specific net clearance exactly
+      function thetaForNetClear({ v, h0, xNet, margin }) {
+        // z(xNet) - (NET_H + margin) = 0
+        const targetH = NET_H + margin;
+        let a = rad(-20), b = rad(35);
+        const f = t => zAtX({ v, theta:t, h0, x: xNet }) - targetH;
+        let fa = f(a), fb = f(b), guard=0;
+        while (fa*fb > 0 && guard++ < 40) { a -= rad(5); b += rad(5); fa = f(a); fb = f(b); }
+        for (let i=0; i<80; i++) {
+          const m = 0.5*(a+b), fm = f(m);
+          if (fa*fm <= 0) { b=m; fb=fm; } else { a=m; fa=fm; }
+        }
+        return 0.5*(a+b);
+      }
+
+      // Main computation from inputs
+      function computeAngles({ mph, feet, inches, target, stepIn=DEFAULT_STEP_IN, margin=MARGIN }) {
+        const v = Math.max(5, mphToMs(mph || 0));
+        const h0 = Math.max(1.2, feet*0.3048 + (inches||0)*0.0254);
+
+        const xNet = BASELINE_TO_NET - stepIn;
+        // Choose a deep but safe initial target; adjust if clearance too small.
+        let dAfterNet = (target === 'wide') ? 5.8 : 5.4; // m
+        let theta = thetaForTarget({ v, h0, xNet, dAfterNet });
+        let Xland = landingX({ v, theta, h0 });
+        let clearance = zAtX({ v, theta, h0, x: xNet }) - NET_H;
+
+        // If clearance < margin, nudge the depth shallower until ok
+        let iter = 0;
+        while (clearance < margin && dAfterNet > 4.8 && iter++ < 15) {
+          dAfterNet -= 0.2;
+          theta = thetaForTarget({ v, h0, xNet, dAfterNet });
+          Xland  = landingX({ v, theta, h0 });
+          clearance = zAtX({ v, theta, h0, x: xNet }) - NET_H;
+        }
+
+        // Lateral target: near sideline (wide) or near T
+        const yTarget = (target === 'wide') ? Math.min(3.8, HALF_SERVICE_W - 0.25) : 0.5;
+        const Xtarget = xNet + dAfterNet;
+        const phi = Math.atan2(yTarget, Xtarget);  // radians
+
+        return { theta, phi, v, h0, xNet, clearance, Xland, Xtarget, yTarget, dAfterNet };
+      }
+
+      // Diagram helpers (SVG)
+      function polylinePath(points) {
+        return points.map((p,i)=> (i===0?`M ${p[0]} ${p[1]}`:`L ${p[0]} ${p[1]}`) ).join(' ');
+      }
+      function arcPath(cx, cy, r, a0, a1) {
+        const large = Math.abs(a1-a0) > Math.PI ? 1 : 0;
+        const sweep = (a1>a0) ? 1 : 0;
+        const x0 = cx + r*Math.cos(a0), y0 = cy + r*Math.sin(a0);
+        const x1 = cx + r*Math.cos(a1), y1 = cy + r*Math.sin(a1);
+        return `M ${x0} ${y0} A ${r} ${r} 0 ${large} ${sweep} ${x1} ${y1}`;
+      }
+
+      function SideView({ sol }) {
+        // Map world (m) to SVG
+        const W=680, H=320, pad=40;
+        const w = W-2*pad, h = H-2*pad;
+        const xMax = Math.max(sol.Xland+1.0, sol.Xtarget+1.0, sol.xNet + SERVICE_DEPTH + 1.0);
+        const yMax = Math.max(sol.h0+0.8, 2.2);
+        const sx = x => pad + (x/xMax) * w;
+        const sy = z => H - pad - (z/yMax) * h;
+
+        // Trajectory samples
+        const pts = [];
+        for (let x=0; x<=sol.Xland; x += sol.Xland/120) {
+          const z = zAtX({ v: sol.v, theta: sol.theta, h0: sol.h0, x });
+          pts.push([sx(x), sy(z)]);
+        }
+
+        // Small arc to illustrate θ (measured from horizontal +x)
+        const arcR = 28;
+        const thetaArc = arcPath(sx(0), sy(sol.h0), arcR, 0, sol.theta);
+        return (
+          <div className="svgCard">
+            <div className="svgTitle">Elevation θ — Side View</div>
+            <svg width={W} height={H}>
+              {/* ground */}
+              <line x1={pad} y1={sy(0)} x2={W-pad} y2={sy(0)} stroke="#2a3a66" strokeWidth="1"/>
+              {/* net */}
+              <line x1={sx(sol.xNet)} y1={sy(0)} x2={sx(sol.xNet)} y2={sy(NET_H)} stroke="#ff7b7b" strokeWidth="4" />
+              <line x1={sx(sol.xNet)-10} y1={sy(NET_H)} x2={sx(sol.xNet)+10} y2={sy(NET_H)} stroke="#ffcfdf" strokeWidth="3"/>
+              {/* service line */}
+              <line x1={sx(sol.xNet+SERVICE_DEPTH)} y1={sy(0)} x2={sx(sol.xNet+SERVICE_DEPTH)} y2={sy(2.8)} stroke="#ff80ff" strokeDasharray="6 6" />
+              {/* trajectory */}
+              <path d={polylinePath(pts)} fill="none" stroke="#ffd166" strokeWidth="3"/>
+              {/* contact point */}
+              <circle cx={sx(0)} cy={sy(sol.h0)} r="5.5" fill="#ffd166" />
+              {/* theta arc */}
+              <path d={thetaArc} stroke="#b9ccff" strokeWidth="2" fill="none"/>
+              <text x={sx(0)+35} y={sy(sol.h0)-8} fill="#bcd4ff" fontSize="12">θ (elevation)</text>
+              {/* labels */}
+              <text x={sx(sol.xNet)+6} y={sy(NET_H)-6} fill="#f9bacb" fontSize="12">net</text>
+              <text x={sx(sol.xNet+SERVICE_DEPTH)+6} y={sy(0)+14} fill="#ffcfff" fontSize="12">service line</text>
+              {/* clearance */}
+              <line x1={sx(sol.xNet)} y1={sy(NET_H)} x2={sx(sol.xNet)} y2={sy(NET_H+sol.clearance)} stroke="#5ad27d" strokeWidth="3"/>
+              <text x={sx(sol.xNet)+8} y={sy(NET_H+sol.clearance/2)} fill="#aef0c2" fontSize="12">
+                clearance ≈ {(sol.clearance*100).toFixed(0)} cm
+              </text>
+            </svg>
+            <div className="footnote">Diagram is illustrative (not to precise scale).</div>
+          </div>
+        );
+      }
+
+      function TopView({ sol, targetLabel }) {
+        const W=680, H=320, pad=36;
+        const w = W-2*pad, h = H-2*pad;
+
+        const xMax = Math.max(sol.Xtarget+1.0, sol.xNet+SERVICE_DEPTH+1.0);
+        const yMax = HALF_SERVICE_W+1.0;
+        const sx = x => pad + (x/xMax) * w;
+        const sy = y => H - pad - ((y + yMax)/(2*yMax)) * h; // center y=0 in middle
+
+        const arcR = 30;
+        const phiArc = arcPath(sx(0), sy(0), arcR, 0, sol.phi);
+
+        return (
+          <div className="svgCard">
+            <div className="svgTitle">Azimuth φ — Top View</div>
+            <svg width={W} height={H}>
+              {/* service box outline */}
+              <rect x={sx(sol.xNet)} y={sy(HALF_SERVICE_W)} width={(sx(sol.xNet+SERVICE_DEPTH)-sx(sol.xNet))} height={(sy(-HALF_SERVICE_W)-sy(HALF_SERVICE_W))}
+                    fill="none" stroke="#b9ccff" strokeWidth="2" />
+              {/* center line (inside box) */}
+              <line x1={sx(sol.xNet)} y1={sy(0)} x2={sx(sol.xNet+SERVICE_DEPTH)} y2={sy(0)} stroke="#b9ccff" strokeDasharray="6 6" />
+              {/* net line across width */}
+              <line x1={sx(sol.xNet)} y1={sy(HALF_SERVICE_W+0.6)} x2={sx(sol.xNet)} y2={sy(-HALF_SERVICE_W-0.6)} stroke="#ff7b7b" strokeWidth="3"/>
+              {/* aiming arrow */}
+              <line x1={sx(0)} y1={sy(0)} x2={sx(sol.Xtarget)} y2={sy(sol.yTarget)} stroke="#e8eefb" strokeWidth="3" markerEnd="url(#arrow)"/>
+              {/* arrowhead marker */}
+              <defs>
+                <marker id="arrow" markerWidth="8" markerHeight="8" refX="6.5" refY="3.5" orient="auto">
+                  <polygon points="0 0, 7 3.5, 0 7" fill="#e8eefb"></polygon>
+                </marker>
+              </defs>
+              {/* phi arc */}
+              <path d={phiArc} stroke="#ffd166" strokeWidth="2" fill="none"/>
+              <text x={sx(0)+36} y={sy(0)-6} fill="#ffd166" fontSize="12">φ (azimuth)</text>
+              {/* labels */}
+              <circle cx={sx(0)} cy={sy(0)} r="5.5" fill="#ffd166"/>
+              <text x={sx(sol.xNet)+6} y={sy(HALF_SERVICE_W)+14} fill="#f9bacb" fontSize="12">net</text>
+              <text x={sx(sol.Xtarget)+6} y={sy(sol.yTarget)-6} fill="#d1e3ff" fontSize="12">{targetLabel}</text>
+            </svg>
+            <div className="footnote">Arrow shows left‑right aim (φ). Flip direction for deuce/ad sides accordingly.</div>
+          </div>
+        );
+      }
+
+      function App() {
+        const [mph, setMph] = useState(50);
+        const [feet, setFeet] = useState(5);
+        const [inches, setInches] = useState(5);
+        const [pref, setPref] = useState('wide');
+        const [stepIn, setStepIn] = useState(DEFAULT_STEP_IN);
+        const [margin, setMargin] = useState(MARGIN);
+
+        const sol = useMemo(() => computeAngles({ mph, feet, inches, target: pref, stepIn, margin }), [mph, feet, inches, pref, stepIn, margin]);
+
+        const thetaDeg = deg(sol.theta).toFixed(1);
+        const phiDeg = Math.abs(deg(sol.phi)).toFixed(1);
+
+        return (
+          <div className="wrap">
+            <header>
+              <div className="dot"></div>
+              <h1>Tennis Serve Angle Helper <span className="tag">quick demo</span></h1>
+            </header>
+
+            <div className="grid">
+              <div className="card">
+                <h2>Inputs</h2>
+                <div className="row">
+                  <div>
+                    <label>Typical serve speed (mph)</label>
+                    <input type="number" value={mph} min="20" max="150" step="1" onChange={e => setMph(+e.target.value || 0)} />
+                  </div>
+                  <div>
+                    <label>Contact height — feet</label>
+                    <input type="number" value={feet} min="4" max="8" step="1" onChange={e => setFeet(+e.target.value || 0)} />
+                  </div>
+                </div>
+                <div className="row">
+                  <div>
+                    <label>Contact height — inches</label>
+                    <input type="number" value={inches} min="0" max="11" step="1" onChange={e => setInches(+e.target.value || 0)} />
+                  </div>
+                  <div>
+                    <label>Target</label>
+                    <div className="radio">
+                      <label><input type="radio" name="t" checked={pref==='wide'} onChange={()=>setPref('wide')} /> Wide</label>
+                      <label><input type="radio" name="t" checked={pref==='t'} onChange={()=>setPref('t')} /> T</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="divider"></div>
+
+                <h2>Advanced (optional)</h2>
+                <div className="row">
+                  <div>
+                    <label>Step‑in distance (m)</label>
+                    <input type="number" value={stepIn} min="0" max="1.2" step="0.1" onChange={e => setStepIn(+e.target.value || 0)} />
+                    <div className="hint">How far inside the baseline you contact the ball (default {DEFAULT_STEP_IN} m).</div>
+                  </div>
+                  <div>
+                    <label>Desired net clearance (m)</label>
+                    <input type="number" value={margin} min="0.05" max="0.40" step="0.01" onChange={e => setMargin(+e.target.value || 0.15)} />
+                    <div className="hint">The diagrams aim to keep at least this much over the net.</div>
+                  </div>
+                </div>
+
+                <div className="divider"></div>
+
+                <h2>Results</h2>
+                <div className="out">
+                  <div className="pill"><b>Elevation θ:</b> <span className="strong">{thetaDeg}°</span></div>
+                  <div className="pill"><b>Azimuth φ:</b> <span className="strong">{phiDeg}°</span> <span className="hint">({pref==='wide'?'toward sideline':'toward center'})</span></div>
+                  <div className="pill"><b>Net clearance:</b> {(sol.clearance*100).toFixed(0)} cm</div>
+                </div>
+                <div className="hint">Angles are computed with a simple ballistic model (no air/spin) and shown for intuition.</div>
+              </div>
+
+              <div className="card">
+                <h2>Diagrams</h2>
+                <div className="canvasWrap">
+                  <SideView sol={sol} />
+                  <TopView sol={sol} targetLabel={pref==='wide'?'wide target':'T target'} />
+                </div>
+              </div>
+            </div>
+
+            <div className="footnote" style={{marginTop: 16}}>
+              Court constants used (singles): baseline→net 11.89 m, net 0.914 m, service depth 6.40 m, half‑width 4.115 m.
+              Pictures are illustrative only.
+            </div>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
