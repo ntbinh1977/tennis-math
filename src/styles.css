@@ -1,0 +1,265 @@
+/* -------- Theme tokens -------- */
+:root {
+  --bg: #0b1020;
+  --card: #111a33;
+  --muted: #9fb0d1;
+  --accent: #6aa3ff;
+  --accent-2: #ffd166;
+  --ok: #5ad27d;
+  --line: #233055;
+  --ink: #e9eefc;
+  --border: #1b2545;
+}
+
+:root[data-theme='light'] {
+  --bg: #f6f8ff;
+  --card: #ffffff;
+  --muted: #637598;
+  --accent: #1d4ed8;
+  --accent-2: #b45309;
+  --ok: #059669;
+  --line: #d6def3;
+  --ink: #0b1020;
+  --border: #e4e9f7;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    'Apple Color Emoji', 'Segoe UI Emoji';
+  color: var(--ink);
+  background: var(--bg);
+}
+
+/* -------- Layout -------- */
+.wrap {
+  max-width: 1100px;
+  margin: 28px auto;
+  padding: 0 18px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+header .dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #7ab6ff);
+  box-shadow: 0 0 16px #6aa3ff80;
+}
+header h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+header .spacer {
+  flex: 1;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 18px;
+}
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+.card h2 {
+  font-size: 1rem;
+  margin: 0 0 10px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+label {
+  display: block;
+  font-size: 0.86rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+input[type='number'],
+select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink);
+  outline: none;
+  font-size: 0.95rem;
+}
+.radio {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
+}
+.hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.warn {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #f1b0b7;
+  background: #fef2f2;
+  color: #7a141b;
+}
+:root[data-theme='dark'] .warn {
+  background: #2b0f12;
+  border-color: #5b1720;
+  color: #ffd9df;
+}
+
+.out {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 8px 0 4px;
+}
+.pill {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.pill b {
+  color: var(--ink);
+}
+.strong {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.canvasWrap {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.svgCard {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+}
+.svgTitle {
+  font-size: 0.92rem;
+  margin: 0 0 8px;
+}
+
+/* SVG styles */
+.axis {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.net {
+  stroke: #ff7b7b;
+  stroke-width: 4;
+}
+.netTape {
+  stroke: #ffd6e0;
+  stroke-width: 3;
+}
+.serviceLine {
+  stroke: #c084fc;
+  stroke-dasharray: 6 6;
+}
+.traj {
+  stroke: var(--accent-2);
+  stroke-width: 3;
+  fill: none;
+}
+.contact {
+  fill: var(--accent-2);
+}
+.arc,
+.arcPhi {
+  stroke: #b9ccff;
+  stroke-width: 2;
+  fill: none;
+}
+.labelSubtle,
+.labelPhi {
+  fill: #bcd4ff;
+  font-size: 12px;
+}
+.labelNet {
+  fill: #f9bacb;
+  font-size: 12px;
+}
+.labelService {
+  fill: #d3b0ff;
+  font-size: 12px;
+}
+.box {
+  fill: none;
+  stroke: #b9ccff;
+  stroke-width: 2;
+}
+.centerLine {
+  stroke: #b9ccff;
+  stroke-dasharray: 6 6;
+}
+.aim {
+  stroke: #e8eefb;
+  stroke-width: 3;
+}
+.arrowHead {
+  fill: #e8eefb;
+}
+.clearBar {
+  stroke: #5ad27d;
+  stroke-width: 3;
+}
+.labelClear {
+  fill: #aef0c2;
+  font-size: 12px;
+}
+
+.btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.btn:hover {
+  filter: brightness(1.08);
+}
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, #0000, var(--line), #0000);
+  margin: 12px 0;
+}
+.foot {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 16px;
+}
